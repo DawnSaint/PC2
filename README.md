@@ -48,11 +48,11 @@ export CO3DV2_DATASET_ROOT="your_dataset_root_folder"
 
 
 
-![image-20241128093056277](C:\Users\D\AppData\Roaming\Typora\typora-user-images\image-20241128093056277.png)
+![image-20241128093056277](asserts/image-20241128093056277.png)
 
 **最可能的原因是：**cuda 虚拟环境的共享内存不足，解决办法是改成更小的batchsize
 
-![image-20241129003836760](C:\Users\D\AppData\Roaming\Typora\typora-user-images\image-20241129003836760.png)
+![image-20241129003836760](asserts/image-20241129003836760.png)
 
 新增`settings=wandb.Settings(init_timeout=120)`
 
