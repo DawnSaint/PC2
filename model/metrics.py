@@ -24,8 +24,6 @@ def point_cloud_f1_score(predicted: Pointclouds, ground_truth: Pointclouds, dist
 
     # Calculate F1-Score
     f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
-
-    print(f"F1-Score: {f1}")
     
     return f1
 

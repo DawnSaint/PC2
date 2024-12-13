@@ -143,6 +143,9 @@ def main(cfg: ProjectConfig):
     print(f'    Max training steps = {cfg.run.max_steps}')
     print(f'    Training state = {train_state}')
 
+    min_loss_value = 1
+    checkpoint_dict = None
+
     # Infinitely loop training
     while True:
     
@@ -205,8 +208,10 @@ def main(cfg: ProjectConfig):
                 if cfg.ema.use_ema and train_state.step % cfg.ema.update_every == 0:
                     model_ema.update(model.parameters())
 
-                # Save a checkpoint
-                if accelerator.is_main_process and (train_state.step % cfg.run.checkpoint_freq == 0):
+
+                # Update checkpoint_dict
+                if (min_loss_value > loss_value):
+                    min_loss_value = loss_value
                     checkpoint_dict = {
                         'model': accelerator.unwrap_model(model).state_dict(),
                         'optimizer': optimizer.state_dict(),
@@ -217,9 +222,12 @@ def main(cfg: ProjectConfig):
                         'model_ema': model_ema.state_dict() if model_ema else {},
                         'cfg': cfg
                     }
-                    checkpoint_path = 'checkpoint-latest.pth'
-                    accelerator.save(checkpoint_dict, checkpoint_path)
-                    print(f'Saved checkpoint to {Path(checkpoint_path).resolve()}')
+
+                # Save a checkpoint
+                if accelerator.is_main_process and (train_state.step % cfg.run.checkpoint_freq == 0):
+                    CHECKPOINT_PATH = 'checkpoint-latest.pth'
+                    accelerator.save(checkpoint_dict, CHECKPOINT_PATH)
+                    print(f'Saved checkpoint to {Path(CHECKPOINT_PATH).resolve()}')
 
                 # Visualize
                 if (cfg.run.vis_freq > 0) and (train_state.step % cfg.run.vis_freq) == 0:
@@ -408,6 +416,7 @@ def sample(
             all_outputs: List[Pointclouds]  # list of B Pointclouds, each with a batch size of return_sample_every_n_steps
 
             # save fscores_data
+            fscores_text = ''
             fscores_data = []
 
             # Save individual samples
@@ -430,7 +439,9 @@ def sample(
 
                 # F-score pred gt
                 f_score = point_cloud_f1_score(output[i], batch.sequence_point_cloud[i])
-                fscores_data.append((sequence_category, f_score))
+                fscores_text += f"Sequence name: {sequence_name}, F-Score: {f_score}\n"
+                fscores_data.append(f_score)
+                
 
                 # Save input images
                 filename = filestr.format(dir='images', category=sequence_category, name=sequence_name, ext='png')
@@ -451,9 +462,8 @@ def sample(
                         name=sequence_name, ext='pth'))
 
             fscores_file_path = output_dir / 'fscores.txt'
-            with open(fscores_file_path, 'w') as fscore_file:
-                for index, seq_name, seq_cat, f_score in fscores_data:
-                    fscore_file.write(f"Index: {index}, Sequence Name: {seq_name}, Sequence Category: {seq_cat}, F-Score: {f_score}\n")
+            with open(fscores_file_path, 'a') as fscore_file:
+                fscore_file.write(f"{fscores_text}Avg: {sum(fscores_data) / len(fscores_data)}\n")
 
     print('Saved samples to: ')
     print(output_dir.absolute())
